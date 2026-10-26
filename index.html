@@ -615,7 +615,7 @@ dialog .acts{padding-top:0}
   var SUPABASE_KEY='sb_publishable_OSl7T4-3nJ83xNx0LbpsBA_djMBCPv3';
   var cloud=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   var state={running:null,plans:[],records:[],days:{},labels:[],tasks:[],blocks:[]};
-  var initialLocalState=null, cloudReady=false, saveTimer=null, currentUser=null, applyingRemote=false;
+  var initialLocalState=null, cloudReady=false, saveTimer=null, currentUser=null, applyingRemote=false, realtimeChannel=null, enteringUserId=null;
   try{
     var raw=localStorage.getItem(KEY);
     if(raw){var p=JSON.parse(raw); if(p&&p.plans&&p.records) state=p;}
@@ -1659,6 +1659,9 @@ dialog .acts{padding-top:0}
     e.stopPropagation();e.preventDefault();
   },true);
   async function enterPlanner(user){
+    if(!user||enteringUserId===user.id&&cloudReady)return;
+    if(enteringUserId===user.id)return;
+    enteringUserId=user.id;
     currentUser=user;
     $('authGate').hidden=true;
     $('accountEmail').textContent=user.email||'';
@@ -1682,15 +1685,19 @@ dialog .acts{padding-top:0}
       cloudReady=true;
       render();tick();goNow();
       $('cloudState').textContent='Synced';
-      // Receive edits made on another signed-in device.
-      cloud.channel('planner-sync-'+user.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'planner_data',filter:'user_id=eq.'+user.id},function(payload){
+      // Receive edits made on another signed-in device. Remove any prior subscription
+      // before creating a new one; Supabase channels cannot be modified after subscribe().
+      if(realtimeChannel){try{await cloud.removeChannel(realtimeChannel);}catch(e){} realtimeChannel=null;}
+      realtimeChannel=cloud.channel('planner-sync-'+user.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'planner_data',filter:'user_id=eq.'+user.id},function(payload){
         if(!payload.new||!payload.new.data)return;
         if(saveTimer)clearTimeout(saveTimer);
         applyingRemote=true;state=payload.new.data;
         if(!state.days)state.days={};['labels','tasks','blocks','events'].forEach(function(k){if(!state[k])state[k]=[];});if(!state.pn)state.pn={};
         applyingRemote=false;render();tick();$('cloudState').textContent='Synced';
       }).subscribe();
+      enteringUserId=null;
     }catch(err){
+      enteringUserId=null;
       cloudReady=false;
       $('authGate').hidden=false;
       $('authStatus').textContent='Could not load cloud data: '+(err.message||String(err));
@@ -1710,7 +1717,7 @@ dialog .acts{padding-top:0}
   }
   $('authSignIn').addEventListener('click',function(){authAction('signin');});
   $('authSignUp').addEventListener('click',function(){authAction('signup');});
-  $('authSignOut').addEventListener('click',async function(){cloudReady=false;currentUser=null;await cloud.auth.signOut();$('authGate').hidden=false;$('authStatus').textContent='Signed out. Sign in to continue.';});
+  $('authSignOut').addEventListener('click',async function(){cloudReady=false;currentUser=null;enteringUserId=null;if(realtimeChannel){try{await cloud.removeChannel(realtimeChannel);}catch(e){}realtimeChannel=null;}await cloud.auth.signOut();$('authGate').hidden=false;$('authStatus').textContent='Signed out. Sign in to continue.';});
   cloud.auth.getSession().then(function(r){if(r.data&&r.data.session)enterPlanner(r.data.session.user);else{$('authGate').hidden=false;$('accountBar').style.visibility='hidden';}});
   cloud.auth.onAuthStateChange(function(event,session){if(event==='SIGNED_IN'&&session&&!currentUser)enterPlanner(session.user);});
   render();tick();goNow();
