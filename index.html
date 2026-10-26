@@ -609,6 +609,8 @@ dialog .acts{padding-top:0}
 <script>
 (function(){
   var KEY='time-tracker-v2', H=56; // H must match --h in the CSS
+  // Defensive fallback for Safari: keep legacy callbacks from failing on an unbound `kind`.
+  var kind = null;
   var SUPABASE_URL='https://uhetklaykcnvrpabuthj.supabase.co';
   var SUPABASE_KEY='sb_publishable_OSl7T4-3nJ83xNx0LbpsBA_djMBCPv3';
   var cloud=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -1662,15 +1664,6 @@ dialog .acts{padding-top:0}
     $('accountEmail').textContent=user.email||'';
     $('cloudState').textContent='Loading…';
     try{
-      var r=kind==='signup'
-      ?await cloud.auth.signUp({
-      email:email,
-      password:password,
-      options:{
-       emailRedirectTo:'https://planner-eight-beryl.vercel.app/'
-    }
-  })
-  :await cloud.auth.signInWithPassword({email:email,password:password});
       var result=await cloud.from('planner_data').select('data').eq('user_id',user.id).maybeSingle();
       if(result.error)throw result.error;
       if(result.data&&result.data.data){
