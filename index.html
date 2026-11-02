@@ -488,10 +488,20 @@ dialog .acts{padding-top:0}
 .ntn{color:var(--ink);opacity:.75;font-size:.82rem;white-space:pre-wrap;overflow-wrap:anywhere}
 .nte{flex:none;border:none;background:none;color:var(--muted);font-size:.76rem;padding:4px 0 4px 8px}
 .ntadd{display:block;margin:12px 0 0 auto;border:1px solid var(--plan-line);border-radius:999px;background:none;padding:6px 14px;font-size:.8rem;color:var(--muted)}
-#bak{width:min(300px,92vw);padding:16px}
-#bak h3{margin:0 0 12px;font-size:1rem}
-.bk{display:flex;gap:8px}
-.bk button{flex:1}
+
+/* direct-typed time boxes + centred date boxes */
+#dlg .tin,.rrow input{display:block;width:100%;height:44px;padding:0!important;line-height:normal;text-align:center!important;text-align-last:center}
+.rrow input{width:3.4em}
+
+/* day popup (month / year zoom-in): block cards, small actions top-right */
+.lbact{display:flex;align-items:center;gap:2px}
+.ntl{flex:1;min-width:0;gap:0}
+.nbr{display:flex;gap:8px;align-items:flex-start;margin:0 0 8px}
+.nbk{flex:1;min-width:0;border-radius:9px;padding:8px 10px;color:var(--ink)}
+.nbk b{display:block;font-weight:600;font-size:.82rem;line-height:1.3;overflow-wrap:anywhere}
+.nbk small{display:block;font-size:.72rem;opacity:.75;font-variant-numeric:tabular-nums}
+.nbk .nn{font-size:.72rem;opacity:.85;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:2px}
+.nbr .nte{align-self:flex-start;padding:4px 0 4px 4px}
 
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
@@ -522,7 +532,7 @@ dialog .acts{padding-top:0}
       <button id="prev" aria-label="Previous day">‹</button>
       <div class="dwrap">
         <button id="dateBtn" class="date" aria-haspopup="true"><span id="date"></span></button>
-        <div class="menu" id="menu" hidden><button id="mCal">Calendar</button><button id="mTasks">Tasks</button><button id="mBak">Backup</button><button id="mOv">Overview</button><button class="msum" id="mStats"><span id="sPlan"></span><span id="sRec"></span></button></div>
+        <div class="menu" id="menu" hidden><button id="mCal">Calendar</button><button id="mTasks">Tasks</button><button id="mOv">Overview</button><button class="msum" id="mStats"><span id="sPlan"></span><span id="sRec"></span></button></div>
       </div>
       <button id="next" aria-label="Next day">›</button>
       <button class="pill" id="pill" hidden aria-label="Open timer"><i></i><span id="clock" role="timer">00:00:00</span></button>
@@ -563,8 +573,8 @@ dialog .acts{padding-top:0}
   <div class="cb"><input type="text" id="dName" maxlength="60" autocomplete="off" aria-label="Name"><div class="cbl" id="dList" hidden></div></div>
   <div class="trw" id="timeRow"><button class="tsum" id="tSum" type="button"></button><button class="ntb" id="dNT" type="button">No time</button></div>
   <div class="two" id="tTwo" hidden>
-    <span class="f big"><span class="v"></span><input type="time" id="dStart" aria-label="Start"></span>
-    <span class="f big"><span class="v"></span><input type="time" id="dEnd" aria-label="End"></span>
+    <input type="text" class="tin" id="dStart" inputmode="numeric" maxlength="5" placeholder="09:00" aria-label="Start">
+    <input type="text" class="tin" id="dEnd" inputmode="numeric" maxlength="5" placeholder="10:00" aria-label="End">
   </div>
   <div class="rrow" id="rngRow" hidden>
     <input id="rFm" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="From month"><input id="rFd" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="From day"><span class="rs">–</span><input id="rTm" inputmode="numeric" maxlength="2" placeholder="MM" aria-label="To month"><input id="rTd" inputmode="numeric" maxlength="2" placeholder="DD" aria-label="To day">
@@ -583,9 +593,7 @@ dialog .acts{padding-top:0}
 
 <dialog class="mgr" id="ovd"><div class="mw" id="ovBody"></div></dialog>
 
-<dialog id="bak"><h3>Backup</h3><div class="bk"><button id="bkEx">Export</button><button id="bkIm">Import</button></div><input type="file" id="bkF" accept="application/json,.json" hidden></dialog>
-
-<dialog id="lbd"><h3 id="lbT"></h3><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div></dialog>
+<dialog id="lbd"><div class="dh"><h3 id="lbT"></h3><span class="lbact"><button class="ntb" id="lbAdd" type="button" hidden></button><button class="tdot" id="lbGo" type="button" hidden aria-label="Go to that day"></button></span></div><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div></dialog>
 
 <dialog id="evd">
   <h2><button class="tt" id="evT" type="button">Add event ⇄</button></h2>
@@ -919,8 +927,8 @@ dialog .acts{padding-top:0}
   
   $('dSave').addEventListener('click',function(){
     if(cur.rng||cur.nt){saveNT();return;}
-    var sv=$('dStart').value,ev=$('dEnd').value,blk=cur.mode==='block';
-    if(!sv||!ev){$('tTwo').hidden=false;$('dErr').textContent='Please fill in both start and end times.';return;}
+    var sv=fixT($('dStart').value),ev=fixT($('dEnd').value),blk=cur.mode==='block';
+    if(!sv||!ev){$('tTwo').hidden=false;$('dErr').textContent='Enter valid times, e.g. 09:30.';return;}
     var s=parseT(sv),e=parseT(ev);
     if(e<=s&&(blk||ev==='00:00'))e=shiftDay(e,1); // events may run overnight
     if(e<=s){$('tTwo').hidden=false;$('dErr').textContent='End time must be after start time.';return;}
@@ -958,7 +966,7 @@ dialog .acts{padding-top:0}
     state[k]=state[k].filter(function(x){return x.id!==cur.id;});save();render();dlg.close();
   });
   $('dAnother').addEventListener('click',function(){
-    var s=parseT($('dStart').value),e=parseT($('dEnd').value);
+    var s=parseT(fixT($('dStart').value)||'09:00'),e=parseT(fixT($('dEnd').value)||'10:00');
     dlg.close();openDlg('plan',null,'task',0,{s:s,e:e>s?e:s+36e5});
   });
 
@@ -1132,14 +1140,19 @@ dialog .acts{padding-top:0}
     save();renderMgr();
   });
 
-  // time chip, peek card (tap) and edit (double tap)
+  // time chip + directly typed start / end ("0930" becomes 09:30)
   function syncT(){
-    var a=$('dStart').value,b=$('dEnd').value;
-    $('tSum').textContent=(a||'--:--')+' – '+(b||'--:--')+'  ▾';
-    $('dStart').previousElementSibling.textContent=a||'--:--';$('dEnd').previousElementSibling.textContent=b||'--:--';
+    $('tSum').textContent=($('dStart').value||'--:--')+' – '+($('dEnd').value||'--:--')+'  ▾';
   }
+  function fixT(v){var m=/^(\d{1,2}):?(\d{2})$/.exec(String(v).trim());return(!m||+m[1]>23||+m[2]>59)?'':pad(+m[1])+':'+m[2];}
   $('tSum').addEventListener('click',function(){$('tTwo').hidden=!$('tTwo').hidden;});
-  ['dStart','dEnd'].forEach(function(id){$(id).addEventListener('change',syncT);});
+  ['dStart','dEnd'].forEach(function(id){
+    $(id).addEventListener('input',function(){
+      var d=this.value.replace(/\D/g,'').slice(0,4);
+      this.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;syncT();
+    });
+    $(id).addEventListener('blur',function(){var f=fixT(this.value);if(f)this.value=f;syncT();});
+  });
   var pk=$('pk'),pkc=null,tapT=null,lastTap=null,lockY=0;
   function peek(kind,id,mode){
     var it=byId(listFor(kind,mode),id);if(!it)return;
@@ -1184,9 +1197,12 @@ dialog .acts{padding-top:0}
     var a=document.activeElement;wasTyping=!!a&&/^(INPUT|TEXTAREA)$/.test(a.tagName);
     if(!e.target.closest('input,textarea,select,button,.cbl')&&a)a.blur();
   });
+  // tap outside: always closes when nothing has been typed; otherwise the first tap only dismisses the keyboard
   dlg.addEventListener('click',function(e){
     var r=dlg.getBoundingClientRect();
-    if((e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)&&!wasTyping)dlg.close();
+    var out=e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;
+    var empty=!$('dName').value.trim()&&!$('dNote').value.trim();
+    if(out&&(!wasTyping||empty))dlg.close();
   });
 
   // time analysis: pie, breakdown list, calendar heatmap + bars
@@ -1379,29 +1395,41 @@ dialog .acts{padding-top:0}
     var L=ntItems(a,b);
     return '<button class="wn" data-o="nt" data-v="'+a+'">'+(L.length?'<i style="background:color-mix(in srgb,'+L[0].col+' 40%,var(--card))">'+esc(L[0].name)+'</i>'+(L.length>1?'<b>+'+(L.length-1)+'</b>':''):'')+'</button>';
   }
+  // day popup (opened from week / month / year): one coloured card per task or event
   function openNt(a,add){
     if(a!==undefined){ntDay=a;ntAdd=!!add;ntOpen=null;}
     var L=ntItems(ntDay,shiftDay(ntDay,1)).sort(byOrd),f={month:'short',day:'numeric'};
     $('lbT').textContent=fd(ntDay,{weekday:'long',month:'short',day:'numeric'});$('lbM').textContent='';
+    $('lbAdd').hidden=!ntAdd;$('lbAdd').textContent=ovMode==='task'?'Add task':'Add event';
+    $('lbGo').hidden=sv.per!=='m';
     $('lbB').innerHTML='<div class="ntl">'+L.map(function(x){
-      var rg=x.e>x.s?' · '+fd(x.s,f)+' – '+fd(x.e,f):'';
-      return '<div class="ntr"><div class="ntmain"><i class="ntb2" style="background:color-mix(in srgb,'+x.col+' 45%,var(--card))">'+esc(x.name)+'</i><span class="ntmeta">'+(x.k==='e'?'Event':'Task')+rg+'</span>'+
-        (x.note?'<div class="ntn">'+esc(x.note)+'</div>':'')+'</div><button class="nte" data-e="'+x.id+'" data-k="'+x.k+'">Edit '+(x.k==='e'?'event':'task')+'</button></div>';
-    }).join('')+'</div>'+(ntAdd?'<button class="ntadd" data-add="'+ntDay+'">'+(ovMode==='task'?'Add task':'Add event')+'</button>':'');
+      var rg=x.e>x.s?fd(x.s,f)+' – '+fd(x.e,f):'';
+      return '<div class="nbr"><div class="nbk" style="background:color-mix(in srgb,'+x.col+' 45%,var(--card))"><b>'+esc(x.name)+'</b>'+
+        (rg?'<small>'+rg+'</small>':'')+(x.note?'<div class="nn">'+esc(x.note)+'</div>':'')+'</div>'+
+        '<button class="nte" data-e="'+x.id+'" data-k="'+x.k+'">Edit '+(x.k==='e'?'event':'task')+'</button></div>';
+    }).join('')+'</div>';
     if(!$('lbd').open)$('lbd').showModal();
   }
+  // week view zoom: every task touching a 3-hour band; the axis marks where the range and each block start / end
   function openBand(a,band){
     var r0=a+band*3*36e5,r1=r0+3*36e5,its=state.plans.filter(function(x){return x.end>r0&&x.start<r1&&x.end>x.start&&!x.nt;}).sort(function(x,y){return x.start-y.start;});
     if(!its.length)return;
     var s0=r0,e0=r1,RH=26,rows='',i;
     its.forEach(function(x){s0=Math.min(s0,x.start);e0=Math.max(e0,x.end);});
-    s0=Math.floor((s0-a)/R20)*R20+a;e0=Math.ceil((e0-a)/R20)*R20+a;
-    var n=Math.round((e0-s0)/R20),bl=its.map(function(x){return {x:x,vs:x.start,ve:x.end};});
+    var PX=RH/R20,H2=Math.round((e0-s0)*PX);
+    var bl=its.map(function(x){return {x:x,vs:x.start,ve:x.end};});
     layout(bl);
-    for(i=0;i<=n;i+=3)rows+='<span style="top:'+(i*RH)+'px">'+hm(s0+i*R20)+'</span>';
+    var ts=[s0,e0],keep=[s0,e0];
+    its.forEach(function(x){ts.push(x.start,x.end);});
+    ts.sort(function(p,q){return p-q;});
+    ts.forEach(function(t){
+      if(keep.every(function(k){return Math.abs(k-t)*PX>=13;}))keep.push(t);
+    });
+    keep.forEach(function(t){rows+='<span style="top:'+((t-s0)*PX).toFixed(1)+'px">'+hm(t)+'</span>';});
     $('lbT').textContent=fd(a,{weekday:'short',month:'short',day:'numeric'})+' · '+(band*3)+'–'+(band*3+3);$('lbM').textContent='';
-    $('lbB').innerHTML='<div class="lbax" style="height:'+(n*RH)+'px">'+rows+'</div><div class="lbl" style="height:'+(n*RH)+'px">'+bl.map(function(it){
-      var top=(it.vs-s0)/R20*RH,hh=Math.max((it.ve-it.vs)/R20*RH,RH*.8),w=100/it.n,nt=it.x.note||'';
+    $('lbAdd').hidden=true;$('lbGo').hidden=true;
+    $('lbB').innerHTML='<div class="lbax" style="height:'+H2+'px">'+rows+'</div><div class="lbl" style="height:'+H2+'px">'+bl.map(function(it){
+      var top=(it.vs-s0)*PX,hh=Math.max((it.ve-it.vs)*PX,RH*.8),w=100/it.n,nt=it.x.note||'';
       return '<i data-b="'+it.x.id+'" style="top:'+top.toFixed(1)+'px;height:'+hh.toFixed(1)+'px;left:calc('+(it.lane*w)+'% + 1px);width:calc('+w+'% - 2px);background:color-mix(in srgb,'+tcolor(it.x)+' 45%,var(--card))">'+esc(tname(it.x))+'<small>'+dur(it.x.end-it.x.start)+'</small>'+(nt&&nt.length<=28&&hh>=RH*2.4?'<small>'+esc(nt)+'</small>':'')+'</i>';
     }).join('')+'</div>';
     $('lbd').showModal();
@@ -1430,6 +1458,7 @@ dialog .acts{padding-top:0}
   function openBlk(q){
     var n=Math.round((q.ve-q.vs)/R20),RH=24,rows='',i;
     $('lbT').textContent=q.name;$('lbM').textContent=dur(q.ve-q.vs);
+    $('lbAdd').hidden=true;$('lbGo').hidden=true;
     for(i=0;i<=n;i+=3)rows+='<span style="top:'+(i*RH)+'px">'+hm(q.vs+i*R20)+'</span>';
     var its=q.items.map(function(x){return {x:x,vs:Math.max(x.start,q.vs),ve:Math.min(x.end,q.ve)};});
     layout(its);
@@ -1445,16 +1474,17 @@ dialog .acts{padding-top:0}
     else if(ev)openLev(null,d);
     else{openDlg('plan',null,'task',0);setRange(true,sv.per==='m'?monthBd(d):yb(d));fillRange(d,d);}
     $('dTitle').disabled=true;$('dTitle').textContent=$('dTitle').textContent.replace(' ⇅','');
-    $('dGoDay').hidden=false;
+    $('dGoDay').hidden=(sv.per==='w'); // week headers already jump to the day
   }
   dlg.addEventListener('close',function(){
     if(pvDay!==null){viewDay=pvDay;pvDay=null;}
     render();if(ovd.open)ovr();if($('lbd').open)$('lbd').close();
   });
   $('dGoDay').addEventListener('click',function(){var d=viewDay;pvDay=null;dlg.close();ovd.close();viewDay=d;render();});
+  $('lbGo').addEventListener('click',function(){var d=ntDay;$('lbd').close();ovd.close();viewDay=d;render();setTimeout(goNow,60);});
+  $('lbAdd').addEventListener('click',function(){var d=ntDay;$('lbd').close();ovAdd(d);});
   $('lbd').addEventListener('click',function(e){
     var ed=e.target.closest('[data-e]');if(ed){$('lbd').close();edit(ed.dataset.k,ed.dataset.e);return;}
-    var ad=e.target.closest('[data-add]');if(ad){var at0=+ad.dataset.add;$('lbd').close();ovAdd(at0);return;}
     var x=e.target.closest('[data-p]');if(x){ntOpen=ntOpen===x.dataset.p?null:x.dataset.p;openNt();return;}
     var b=e.target.closest('[data-b]');if(b){peek('plan',b.dataset.b,'task');return;}
     var r=$('lbd').getBoundingClientRect();
@@ -1551,29 +1581,6 @@ dialog .acts{padding-top:0}
   });
   $('mOv').addEventListener('click',function(){sv.per='w';sv.at=Date.now();sv.open=null;yM=null;ovScroll=true;ovr();ovd.showModal();ovr();});
 
-  $('mBak').addEventListener('click',function(){$('bak').showModal();});
-  $('bkEx').addEventListener('click',function(){
-    var bl=new Blob([JSON.stringify(state)],{type:'application/json'}),a=document.createElement('a');
-    a.href=URL.createObjectURL(bl);a.download='time-tracker-backup-'+dayKey(Date.now())+'.json';a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
-  });
-  $('bkIm').addEventListener('click',function(){$('bkF').click();});
-  $('bkF').addEventListener('change',function(){
-    var f=this.files[0];if(!f)return;var rd0=new FileReader(),inp=this;
-    rd0.onload=function(){
-      try{
-        var d=JSON.parse(rd0.result);
-        if(d&&d.plans&&d.records){
-          state=d;['labels','tasks','blocks','events'].forEach(function(k){if(!state[k])state[k]=[];});if(!state.days)state.days={};if(!state.pn)state.pn={};
-          save();render();$('bak').close();
-        }else alert('This file is not a backup from this page.');
-      }catch(e){alert('This file could not be read.');}
-      inp.value='';
-    };
-    rd0.readAsText(f);
-  });
-  $('bak').addEventListener('close',function(){if(!document.querySelector('dialog[open]')){document.body.classList.remove('lock');document.body.style.top='';}});
-  $('bak').addEventListener('click',function(e){var r=$('bak').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('bak').close();});
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
   var cald=$('cald'),calM=0;
   var calV='d';
