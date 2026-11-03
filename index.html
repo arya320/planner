@@ -565,19 +565,29 @@ dialog .acts{padding-top:0}
 .dc-m{font-size:.74rem}
 .dc-n{font-size:.8rem;margin-top:4px}
 #pop{max-height:calc(var(--vvh,100vh) - 24px);overflow:auto}
-#lbd.zoom{width:min(692px,96vw)}
 #lbd h3{font-size:1rem}
 .lbr{margin-left:8px;font-size:.85rem;font-weight:400;color:var(--muted)}
 .lbm:empty{display:none}
-.lbt.zm{max-height:none;overflow:visible;padding:0}
-.zw{position:relative}
-.zt{position:absolute;top:0;bottom:0;left:25%;width:50%;display:flex;gap:6px;transition:left .28s ease}
-.zw.sel .zt{left:0}
-.zt .lbax{width:34px}
-.zc{position:absolute;top:0;left:calc(50% + 8px);width:calc(50% - 8px);opacity:0;transform:translateX(14px);transition:opacity .22s ease,transform .28s ease;pointer-events:none}
-.zw.sel .zc{opacity:1;transform:none;pointer-events:auto}
 .lbl i{font-size:.82rem;padding:3px 7px}
 .lbl i small{font-size:.72rem}
+/* v7: zoom = column + axis wide; the task card opens beside it, like the home page */
+#lbd.zoom{overflow:visible;transition:transform .28s ease}
+#lbd.zoom.sel{transform:translateX(calc(var(--sx,0px) * -1))}
+.lbt.zm{max-height:calc(var(--vvh,100vh) - 130px);overflow:auto;padding:0;gap:6px}
+.lbt.zm .lbax{width:34px}
+#lbZ{position:absolute;top:0;left:calc(100% + 4px);opacity:0;pointer-events:none;transition:opacity .22s ease;max-height:calc(var(--vvh,100vh) - 16px);overflow:auto}
+#lbd:not(.zoom) #lbZ{display:none}
+#lbd.sel #lbZ{opacity:1;pointer-events:auto}
+/* timeline blocks use the same shape, padding and type as the cards */
+.blk{border-radius:10px;padding:3px 10px}
+.blk b{font-size:.85rem}
+.blk small{font-size:.74rem}
+.band{border-radius:10px}
+.bandlbl{font-size:.85rem;padding:3px 10px 3px 13px;margin:0}
+.bandlbl small{font-size:.74rem}
+.lbl i{font-size:.85rem;padding:3px 10px;border-radius:10px}
+.lbl i small{font-size:.74rem}
+.lbl i.eb{padding-left:13px}
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
 #authCard{width:min(390px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0001}
@@ -669,7 +679,7 @@ dialog .acts{padding-top:0}
 
 <dialog class="mgr" id="ovd"><div class="mw" id="ovBody"></div></dialog>
 
-<dialog id="lbd"><div class="dh"><h3 id="lbT"></h3><span class="lbact"><button class="ntb" id="lbAdd" type="button" hidden></button><button class="tdot" id="lbGo" type="button" hidden aria-label="Go to that day"></button></span></div><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div><div class="lbc" id="lbC"></div></dialog>
+<dialog id="lbd"><div class="dh"><h3 id="lbT"></h3><span class="lbact"><button class="ntb" id="lbAdd" type="button" hidden></button><button class="tdot" id="lbGo" type="button" hidden aria-label="Go to that day"></button></span></div><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div><div class="lbc" id="lbC"></div><div id="lbZ"></div></dialog>
 
 <dialog id="evd">
   <h2><button class="tt" id="evT" type="button">Add event ⇄</button></h2>
@@ -744,7 +754,16 @@ dialog .acts{padding-top:0}
     ['#c9a28a','#f0c9a4','#d98b66','#a85f46','#e8b8a0','#c98f5a'],['#c5a5ab','#f0c4cc','#d68a9a','#a8586b','#e5b3bd','#c77c8a'],
     ['#aca5c0','#d3c7ee','#8d7fc2','#665a9e','#c4b2dd','#9e88b8'],['#cdb97c','#f0e0a0','#d9b24c','#a88a2c','#e6d07a','#bfa968'],
     ['#8fb3ab','#b4e0d6','#5a9e94','#357a74','#a0d0c8','#6cb0b8'],['#b8ab9c','#d9cfc2','#8c7d6e','#5f5348','#c9b89f','#a69583']];
+  PAL.forEach(function(f){for(var i=0;i<f.length;i++)f[i]=lift(f[i]);});
   PAL.forEach(function(f){[[0,1],[1,2],[2,3],[3,4],[4,5],[0,2],[1,3],[2,4],[3,5]].forEach(function(q){f.push(mixc(f[q[0]],f[q[1]],.5));});});
+  function lift(c){
+    var x=parseInt(c.slice(1),16),r=(x>>16&255)/255,g=(x>>8&255)/255,b=(x&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn,h=0,sa=0;
+    if(d){sa=l>.5?d/(2-mx-mn):d/(mx+mn);h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;h/=6;}
+    l=Math.min(.9,l+.06);
+    function f(p,q,t){if(t<0)t+=1;if(t>1)t-=1;return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p;}
+    var q=l<.5?l*(1+sa):l+sa-l*sa,p=2*l-q,R=sa?f(p,q,h+1/3):l,G=sa?f(p,q,h):l,B=sa?f(p,q,h-1/3):l;
+    return '#'+[R,G,B].map(function(v){return ('0'+Math.round(v*255).toString(16)).slice(-2);}).join('');
+  }
   function mixc(a,b,q){var x=parseInt(a.slice(1),16),y=parseInt(b.slice(1),16),o='#';[16,8,0].forEach(function(s){var u=(x>>s)&255,w=(y>>s)&255;o+=('0'+Math.round(u+(w-u)*q).toString(16)).slice(-2);});return o;}
   function shade(base,i){var f=[null,['#ffffff',.3],['#3b3417',.18],['#ffffff',.5],['#3b3417',.32],['#ffffff',.65]][i%6];return f?mixc(base,f[0],f[1]):base;}
   function byId(l,id){return id?l.filter(function(x){return x.id===id;})[0]:undefined;}
@@ -1561,7 +1580,7 @@ dialog .acts{padding-top:0}
   // ===== overview popup (same cards) =====
   function lbHead(day,sub){
     $('lbT').textContent=fd(day,{weekday:'long',month:'short',day:'numeric'});$('lbM').textContent=sub||'';$('lbC').innerHTML='';
-    $('lbB').className='lbt';$('lbd').classList.remove('zoom');
+    $('lbB').className='lbt';var d=$('lbd');d.classList.remove('zoom','sel');d.style.width='';d.removeAttribute('data-sel');$('lbZ').innerHTML='';
   }
   function openNt(a,add){
     if(a!==undefined){ntDay=a;ntAdd=!!add;ntOpen=null;}
@@ -1579,27 +1598,27 @@ dialog .acts{padding-top:0}
     if(!$('lbd').open)$('lbd').showModal();
   }
   function fmtAx(t,a){var h=(t-a)/36e5;return(h>=0&&h<=24&&h===Math.round(h))?String(h):hm(t);}
-  // tap a block in the zoom: the timeline slides left, its card appears on the right; tap again to go back
+  // tap a block in the zoom: the zoom slides to the plan side, its card opens on the record side at the same height; tap again to go back
   function zSel(k,id,el){
-    var zw=$('lbB').querySelector('.zw'),zc=zw.querySelector('.zc'),h0=+zw.dataset.h;
-    if(zw.dataset.sel===k+id){zw.classList.remove('sel');zw.dataset.sel='';zw.style.height=h0+'px';return;}
-    zw.style.height=h0+'px';
-    zc.innerHTML=cardFor(k,id,{});zw.dataset.sel=k+id;
-    var top=el.offsetTop,h=zc.offsetHeight;
-    if(top+h>h0)top=Math.max(0,h0-h);
-    zc.style.top=top+'px';
-    if(h>h0){zw.style.height=h+'px';zc.style.top='0px';}
-    zw.classList.add('sel');
+    var d=$('lbd'),z=$('lbZ');
+    if(d.dataset.sel===k+id){d.classList.remove('sel');d.removeAttribute('data-sel');return;}
+    z.innerHTML=cardFor(k,id,{});z.style.width=Math.max(120,Math.round(+d.dataset.col-4))+'px';
+    d.dataset.sel=k+id;
+    var dr=d.getBoundingClientRect(),er=el.getBoundingClientRect(),vh=window.visualViewport?visualViewport.height:innerHeight;
+    var top=er.top-dr.top-d.clientTop,h=z.offsetHeight;
+    if(dr.top+top+h>vh-8)top=vh-8-h-dr.top;
+    if(dr.top+top<8)top=8-dr.top;
+    z.style.top=top+'px';
+    d.classList.add('sel');
   }
-  // week view zoom: one 3-hour band, tasks over timed events, no scrolling
+  // week view zoom: one 3-hour band (tasks over timed events), natural size; width = one column + the time axis of the home page
   function openBand(a,band){
     var r0=a+band*3*36e5,r1=r0+3*36e5,its=state.plans.filter(function(x){return x.end>r0&&x.start<r1&&x.end>x.start&&!x.nt;}).sort(function(x,y){return x.start-y.start;});
     var evs=state.blocks.filter(function(x){return x.end>r0&&x.start<r1&&x.end>x.start;});
     if(!its.length&&!evs.length)return;
     var s0=r0,e0=r1,rows='';
     its.forEach(function(x){s0=Math.min(s0,x.start);e0=Math.max(e0,x.end);});
-    var vvh=window.visualViewport?visualViewport.height:innerHeight;
-    var avail=Math.max(220,vvh*.9-110),PX=Math.min(34/R20,avail/(e0-s0)),H2=Math.round((e0-s0)*PX);
+    var PX=34/R20,H2=Math.round((e0-s0)*PX);
     var bl=its.map(function(x){return {x:x,vs:x.start,ve:x.end};});
     layout(bl);
     var ts=[s0,e0],keep=[s0,e0];
@@ -1614,12 +1633,15 @@ dialog .acts{padding-top:0}
     }).join('');
     lbHead(a,'');
     $('lbT').innerHTML=esc(fd(a,{weekday:'long',month:'short',day:'numeric'}))+'<span class="lbr">'+(band*3)+'–'+(band*3+3)+'</span>';
-    $('lbB').className='lbt zm';$('lbd').classList.add('zoom');
+    var Sw=$('tl').offsetWidth||Math.min(692,innerWidth-28),col=(Sw-56)/2,d=$('lbd');
+    d.classList.add('zoom');d.style.width=Math.min(Math.round(col+56),Math.round(innerWidth*.96))+'px';
+    d.style.setProperty('--sx',Math.round(col/2)+'px');d.dataset.col=col;
+    $('lbB').className='lbt zm';
     $('lbAdd').hidden=true;$('lbGo').hidden=true;
-    $('lbB').innerHTML='<div class="zw" data-h="'+H2+'" style="height:'+H2+'px"><div class="zt"><div class="lbax" style="height:'+H2+'px">'+rows+'</div><div class="lbl" style="height:'+H2+'px">'+evh+bl.map(function(it){
+    $('lbB').innerHTML='<div class="lbax" style="height:'+H2+'px">'+rows+'</div><div class="lbl" style="height:'+H2+'px">'+evh+bl.map(function(it){
       var top=(it.vs-s0)*PX,hh=Math.max((it.ve-it.vs)*PX,16),w=100/it.n,nt=it.x.note||'';
       return '<i class="tk" data-b="'+it.x.id+'" style="--c:'+tcolor(it.x)+';top:'+top.toFixed(1)+'px;height:'+hh.toFixed(1)+'px;left:calc('+(it.lane*w)+'% + 1px);width:calc('+w+'% - 2px);background:color-mix(in srgb,'+tcolor(it.x)+' 32%,var(--card))"><b>'+esc(tname(it.x))+'</b>'+(hh>=34?'<small>'+hm(it.x.start)+' – '+hm(it.x.end)+'</small>':'')+(nt&&hh>=64?'<small>'+esc(nt)+'</small>':'')+'</i>';
-    }).join('')+'</div></div><div class="zc"></div></div>';
+    }).join('')+'</div>';
     $('lbd').showModal();
   }
   var ovScroll=false,yM=null,ntDay=0,ntAdd=false,ntOpen=null;
@@ -1688,6 +1710,7 @@ dialog .acts{padding-top:0}
     var ed=e.target.closest('[data-ed]');if(ed){var k=ed.dataset.ed,id=ed.dataset.id;$('lbd').close();edit(k,id);return;}
     var b=e.target.closest('[data-b]');if(b){zSel('p',b.dataset.b,b);return;}
     var eb=e.target.closest('[data-eb]');if(eb){zSel('b',eb.dataset.eb,eb);return;}
+    if(e.target.closest('#lbZ'))return;
     var r=$('lbd').getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('lbd').close();
   });
