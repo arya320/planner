@@ -612,6 +612,16 @@ dialog .acts{padding-top:0}
 .dc-a{margin-left:auto}
 .band:not(.sb) .bandlbl{display:block;white-space:normal}
 .bandlbl small{display:block}
+/* v9: one alignment for every block: name 10px from the left, top-aligned with a second line, centred without one */
+.blk,.lbl i{line-height:1.3}
+.blk b,.lbl i b{line-height:1.3}
+.blk.sm{padding:0 4px 0 10px}
+.lbl i.sm{padding:0 4px 0 10px}
+.lbl i.one{display:flex;align-items:center}
+.lbl i.one b{flex:1;min-width:0}
+.lbl i.two{display:block}
+.lbl i.sm.two{padding-top:3px}
+.lbl i.eb.sm{padding-left:13px}
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
 #authCard{width:min(390px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0001}
@@ -1569,7 +1579,7 @@ dialog .acts{padding-top:0}
     var it=byId(k==='p'?state.plans:k==='r'?state.records:k==='b'?state.blocks:state.events,id);if(!it)return '';
     var f={month:'short',day:'numeric'},nt=k==='e'||!!it.nt,name=k==='e'?it.name:k==='b'?it.task:tname(it),meta,col,st;
     var bare=!!opt.bare&&!nt;
-    meta=nt?(it.end>it.start?fd(it.start,f)+' – '+fd(it.end,f):fd(it.start,f)):(bare&&it.end-it.start>=36e5?'':hm(it.start)+' – '+hm(it.end)+' · '+dur(it.end-it.start));
+    meta=nt?(it.end>it.start?fd(it.start,f)+' – '+fd(it.end,f):fd(it.start,f)):(bare&&(opt.nometa||it.end-it.start>=36e5)?'':hm(it.start)+' – '+hm(it.end)+' · '+dur(it.end-it.start));
     if(k==='e'){col=evCol(it);st='ev';}else if(k==='b'){col=bcol(it);st='ev';}else{col=tcolor(it);st=k==='r'?'rc':'tk';}
     return card({k:k,id:id,col:col,st:st,name:name,meta:meta,note:it.note,bare:bare,start:!!opt.start&&k==='p'&&!nt});
   }
@@ -1645,7 +1655,7 @@ dialog .acts{padding-top:0}
   function zSel(k,id,el){
     var d=$('lbd'),z=$('lbZ');
     if(d.dataset.sel===k+id){d.classList.remove('sel');d.removeAttribute('data-sel');return;}
-    z.innerHTML=cardFor(k,id,{bare:true});z.style.width=Math.max(120,Math.round(+d.dataset.col-4))+'px';
+    z.innerHTML=cardFor(k,id,{bare:true,nometa:true});z.style.width=Math.max(120,Math.round(+d.dataset.col-4))+'px';
     d.dataset.sel=k+id;
     var dr=d.getBoundingClientRect(),er=el.getBoundingClientRect(),vh=window.visualViewport?visualViewport.height:innerHeight;
     var top=er.top-dr.top-d.clientTop,h=z.offsetHeight;
@@ -1671,7 +1681,7 @@ dialog .acts{padding-top:0}
     layout(all.filter(function(i){return i.k==='p'&&!i.small;}));
     var Sw=$('tl').offsetWidth||Math.min(692,innerWidth-28),col=(Sw-56)/2,dW=Math.min(Math.round(col+56),Math.round(innerWidth*.96));
     var mins=(e0-s0)/6e4,vvh=window.visualViewport?visualViewport.height:innerHeight,avail=Math.max(220,vvh*.9-130);
-    var pm=Math.max(1.2,Math.min(avail/mins,3.2)),PX=pm/6e4,H2=Math.round((e0-s0)*PX);
+    var pm=Math.max(1.4,Math.min(avail/mins,3.2)),PX=pm/6e4,H2=Math.round((e0-s0)*PX);
     // axis: the 3-hour band first (numbers), then where blocks stick out of it, then every block edge
     var keep=[],ex=[],inn=[];
     function addT(t){if(keep.every(function(k){return Math.abs(k-t)*PX>=14;}))keep.push(t);}
@@ -1679,16 +1689,20 @@ dialog .acts{padding-top:0}
     all.forEach(function(it){(it.small?[it.rs]:[it.vs,it.ve]).forEach(function(t){(t<r0||t>r1?ex:inn).push(t);});});
     ex.sort(function(p,q){return p-q;}).forEach(addT);inn.sort(function(p,q){return p-q;}).forEach(addT);
     var rows=keep.map(function(t){return '<span style="top:'+((t-s0)*PX).toFixed(1)+'px">'+fmtAx(t,a)+'</span>';}).join('');
+    var lblW=dW-80;
     function one(it){
-      var x=it.x,isP=it.k==='p',name=isP?tname(x):x.task,c=isP?tcolor(x):bcol(x),d=it.ve-it.vs,geo,cls=isP?'tk':'eb',txt='<b>'+esc(name)+'</b>';
+      var x=it.x,isP=it.k==='p',name=isP?tname(x):x.task,c=isP?tcolor(x):bcol(x),d=it.ve-it.vs,geo,cls=isP?'tk':'eb',wpx,
+          full=hm(x.start)+' – '+hm(x.end)+' · '+dur(x.end-x.start);
       if(it.small){
         var l=(it.vs-it.rs)/HALF*100,w=Math.max(d,3e5)/HALF*100;if(l+w>100)l=100-w;
-        geo='top:'+((it.rs-s0)*PX).toFixed(1)+'px;height:'+(HALF*PX).toFixed(1)+'px;left:calc('+l.toFixed(2)+'% + 1px);width:calc('+w.toFixed(2)+'% - 2px)';cls+=' sm';
+        geo='top:'+((it.rs-s0)*PX).toFixed(1)+'px;height:'+(HALF*PX).toFixed(1)+'px;left:calc('+l.toFixed(2)+'% + 1px);width:calc('+w.toFixed(2)+'% - 2px)';cls+=' sm';wpx=w/100*lblW;
       }else{
-        geo='top:'+((it.vs-s0)*PX).toFixed(1)+'px;height:'+(d*PX).toFixed(1)+'px';
-        if(isP){var ww=100/it.n;geo+=';left:calc('+(it.lane*ww)+'% + 1px);width:calc('+ww+'% - 2px)';}
-        if(d<36e5)cls+=' s';else txt+='<small>'+dur(x.end-x.start)+'</small>';
+        geo='top:'+((it.vs-s0)*PX).toFixed(1)+'px;height:'+(d*PX).toFixed(1)+'px';wpx=lblW;
+        if(isP){var ww=100/it.n;geo+=';left:calc('+(it.lane*ww)+'% + 1px);width:calc('+ww+'% - 2px)';wpx=lblW*ww/100;}
       }
+      // same layout as the home timeline: name on top, "from – to · total" under it; centred when there is no second line
+      var line=wpx>=115?full:wpx>=70?dur(x.end-x.start):'',txt='<b>'+esc(name)+'</b>'+(line?'<small>'+line+'</small>':'');
+      cls+=line?' two':' one';
       return '<i class="'+cls+'" '+(isP?'data-b':'data-eb')+'="'+x.id+'" style="--c:'+c+';'+geo+(isP?';background:color-mix(in srgb,'+c+' 32%,var(--card))':'')+'">'+txt+'</i>';
     }
     var ord3=function(it){return it.small?2:it.k==='b'?0:1;};
