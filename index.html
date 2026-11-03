@@ -528,6 +528,29 @@ dialog .acts{padding-top:0}
 .wn i.tk{border:1px dashed var(--c);padding:0 5px}
 .wn i.ev{border-radius:4px;padding-left:8px;box-shadow:inset 3px 0 0 var(--c)}
 
+/* v5: one detail-card template everywhere */
+.dc{border-radius:10px;padding:10px 12px;color:var(--ink);margin:0 0 8px}
+.dc:last-child{margin-bottom:0}
+.dc.tk{border:1.5px dashed var(--c);background:color-mix(in srgb,var(--c) 32%,var(--card))}
+.dc.rc{background:color-mix(in srgb,var(--c) 58%,var(--card))}
+.dc.ev{background:color-mix(in srgb,var(--c) 26%,var(--card));box-shadow:inset 3px 0 0 var(--c);padding-left:15px}
+.dc-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.dc-h b{font-size:1rem;font-weight:600;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.dc-a{display:flex;gap:4px;flex:none}
+.dc-a button{border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);background:color-mix(in srgb,var(--card) 55%,transparent);color:var(--ink);border-radius:999px;padding:1px 9px;font-size:.74rem;line-height:1.5;white-space:nowrap}
+.dc-a button[data-start]{background:var(--yellow);border-color:var(--yellow-deep);color:#3b3417;font-weight:600}
+.dc-m{font-size:.84rem;opacity:.8;font-variant-numeric:tabular-nums;margin-top:2px}
+.dc-n{font-size:.95rem;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px}
+.ntl .dc{margin-bottom:8px}
+#pop{position:absolute;z-index:4}
+#pop .dc{box-shadow:0 8px 22px rgba(59,52,23,.22)}
+#pop .dc.ev{box-shadow:inset 3px 0 0 var(--c),0 8px 22px rgba(59,52,23,.22)}
+.lbc{margin-top:10px}
+.lbc:empty{display:none}
+.lbt.bz{max-height:44vh}
+.lbl i.sel{outline:2px solid var(--ink)!important;outline-offset:1px}
+#lbd .lbm{font-size:.84rem}
+
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
 #authCard{width:min(390px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0001}
@@ -589,6 +612,7 @@ dialog .acts{padding-top:0}
     <div class="axis" id="axis"></div>
     <div class="col" id="recCol"></div>
     <div class="now" id="now"><em id="nowLbl"></em></div>
+    <div id="pop" hidden></div>
   </div>
     <div class="tools"><button id="export">Export CSV</button><button id="clear">Clear all</button></div>
 </div>
@@ -618,7 +642,7 @@ dialog .acts{padding-top:0}
 
 <dialog class="mgr" id="ovd"><div class="mw" id="ovBody"></div></dialog>
 
-<dialog id="lbd"><div class="dh"><h3 id="lbT"></h3><span class="lbact"><button class="ntb" id="lbAdd" type="button" hidden></button><button class="tdot" id="lbGo" type="button" hidden aria-label="Go to that day"></button></span></div><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div></dialog>
+<dialog id="lbd"><div class="dh"><h3 id="lbT"></h3><span class="lbact"><button class="ntb" id="lbAdd" type="button" hidden></button><button class="tdot" id="lbGo" type="button" hidden aria-label="Go to that day"></button></span></div><div class="lbm" id="lbM"></div><div class="lbt" id="lbB"></div><div class="lbc" id="lbC"></div></dialog>
 
 <dialog id="evd">
   <h2><button class="tt" id="evT" type="button">Add event ⇄</button></h2>
@@ -749,6 +773,7 @@ dialog .acts{padding-top:0}
   }
 
   var viewDay=dayStart(Date.now());
+  var popKey=null,popDay=null,lastClosed={key:'',t:0};
 
   // blocks that overlap in time sit side by side
   function layout(items){
@@ -787,6 +812,7 @@ dialog .acts{padding-top:0}
   function sum(items){return items.reduce(function(a,i){return a+(i.ve-i.vs);},0);}
 
   function render(){
+    if(popKey&&popDay!==viewDay)closePop();
     var d0=viewDay,d1=nextDay(d0),now=Date.now(),isToday=d0===dayStart(now);
     var ds=new Date(d0).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
     $('date').textContent=ds; $('pDay').textContent='Notes for '+ds;
@@ -845,6 +871,7 @@ dialog .acts{padding-top:0}
   // Plan / Record panels replace the date, stats and timer block
   var openPanel=null;
   function setFull(n){
+    closePop();
     var mid=(window.scrollY+innerHeight/2-$('tl').offsetTop)/H*60;
     full=full===n?null:n;
     var t=$('tl');t.classList.toggle('fp',full==='plan');t.classList.toggle('fr',full==='rec');t.classList.toggle('full',!!full);
@@ -854,6 +881,7 @@ dialog .acts{padding-top:0}
     window.scrollTo(0,Math.max(0,$('tl').offsetTop+mid/60*H-innerHeight/2));
   }
   function setPanel(name){
+    closePop();
     openPanel=openPanel===name?null:name;
     $('head').hidden=!!openPanel;
     $('panelPlan').hidden=openPanel!=='plan';
@@ -935,9 +963,9 @@ dialog .acts{padding-top:0}
     var col=$(c[0]),kind=c[1];
     col.addEventListener('click',function(e){
       var b=e.target.closest('.blk'),l=e.target.closest('.bandlbl'),ev=e.target.closest('.evc');
-      if(ev){if(ev.dataset.pl)openDlg('plan',ev.dataset.ev,'task');else openEv(ev.dataset.ev);return;}
-      if(b){if(b.dataset.id!=='live')tapOn(kind,b.dataset.id,'task');return;}
-      if(l){tapOn(kind,l.dataset.id,'block');return;}
+      if(ev){openPop({t:'n'});return;}
+      if(b){openPop({t:'i',kind:kind,k:kind==='rec'?'r':'p',id:b.dataset.id,el:b});return;}
+      if(l){openPop({t:'i',kind:kind,k:'b',id:l.dataset.id,el:l.parentNode});return;}
       openDlg(kind,null,'task',snap(e,col));
     });
     col.addEventListener('keydown',function(e){
@@ -1439,21 +1467,88 @@ dialog .acts{padding-top:0}
     });
   }
   // day popup (opened from week / month / year): one coloured card per task or event
+  // ===== the one detail-card template (home, week, month, year all use it) =====
+  function bcol(b){var l=state.labels.filter(function(q){return q.name.toLowerCase()===String(b.task).toLowerCase();})[0];return l?PAL[(l.c||0)%8][0]:'#b8ab9c';}
+  function card(o){
+    return '<div class="dc '+o.st+'" style="--c:'+o.col+'"><div class="dc-h"><b>'+esc(o.name)+'</b><span class="dc-a">'+
+      (o.start?'<button type="button" data-start="'+o.id+'">Start</button>':'')+
+      (o.k?'<button type="button" data-ed="'+o.k+'" data-id="'+o.id+'">Edit '+(o.k==='e'||o.k==='b'?'event':'task')+'</button>':'')+
+      '</span></div>'+(o.meta?'<div class="dc-m">'+esc(o.meta)+'</div>':'')+(o.note?'<div class="dc-n">'+esc(o.note)+'</div>':'')+'</div>';
+  }
+  // k: p = plan task, r = record, b = timed event, e = long event
+  function cardFor(k,id,opt){
+    opt=opt||{};
+    var it=byId(k==='p'?state.plans:k==='r'?state.records:k==='b'?state.blocks:state.events,id);if(!it)return '';
+    var f={month:'short',day:'numeric'},nt=k==='e'||!!it.nt,name=k==='e'?it.name:k==='b'?it.task:tname(it),meta,col,st;
+    meta=nt?(it.end>it.start?fd(it.start,f)+' – '+fd(it.end,f):fd(it.start,f)):hm(it.start)+' – '+hm(it.end)+' · '+dur(it.end-it.start);
+    if(k==='e'){col=evCol(it);st='ev';}else if(k==='b'){col=bcol(it);st='ev';}else{col=tcolor(it);st=k==='r'?'rc':'tk';}
+    return card({k:k,id:id,col:col,st:st,name:name,meta:meta,note:it.note,start:!!opt.start&&k==='p'&&!nt});
+  }
+  function liveCard(){
+    var r=state.running;if(!r)return '';
+    var t=byId(state.tasks,r.taskId);
+    return card({k:null,id:'live',col:t?tcolor({taskId:r.taskId}):PAL[7][0],st:'rc',name:r.task,meta:hm(r.start)+' – now · in progress',note:r.note});
+  }
+  // home page: the card grows out of the tapped block (same column, downwards), no backdrop
+  function closePop(){var p=$('pop');if(!p)return;if(popKey)lastClosed={key:popKey,t:Date.now()};p.hidden=true;p.innerHTML='';popKey=null;}
+  function openPop(o){
+    var key=o.t==='n'?'n':o.k+o.id,p=$('pop'),tl=$('tl');
+    if(popKey===key&&!p.hidden){closePop();return;}
+    if(lastClosed.key===key&&Date.now()-lastClosed.t<80)return;
+    var html;
+    if(o.t==='n')html=ntItems(viewDay,nextDay(viewDay)).sort(byOrd).map(function(x){return cardFor(x.k,x.id,{});}).join('');
+    else if(o.id==='live')html=liveCard();
+    else html=cardFor(o.k,o.id,{start:viewDay===dayStart(Date.now())&&!state.running});
+    if(!html)return;
+    p.innerHTML=html;p.hidden=false;popKey=key;popDay=viewDay;
+    var tr=tl.getBoundingClientRect(),colEl,top;
+    function vis(c){return c.offsetParent!==null;}
+    if(o.t==='i'){colEl=$(o.kind==='plan'?'planCol':'recCol');top=o.el.getBoundingClientRect().top-tr.top;}
+    else if(vis($('planCol'))&&vis($('recCol'))){colEl=$('recCol');top=0;}   // chips live on the plan side: card opens on the record side
+    else{colEl=$('planCol');var w=document.querySelector('#planCol .evw');top=w?w.getBoundingClientRect().bottom-tr.top+4:0;}
+    var cr=colEl.getBoundingClientRect();
+    p.style.left=(cr.left-tr.left+2)+'px';p.style.width=(cr.width-4)+'px';
+    var mx=tl.offsetHeight-p.offsetHeight-4;if(top>mx)top=Math.max(0,mx);
+    p.style.top=top+'px';
+    p.style.scrollMarginTop=($('top').offsetHeight+8)+'px';p.style.scrollMarginBottom='16px';
+    p.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  $('pop').addEventListener('click',function(e){
+    var st=e.target.closest('[data-start]');
+    if(st){var it=byId(state.plans,st.dataset.start);closePop();if(it)toggle(tname(it),it.note||'',it.taskId||null);return;}
+    var d=e.target.closest('[data-ed]');
+    if(d){var k=d.dataset.ed,id=d.dataset.id;closePop();edit(k,id);}
+  });
+  document.addEventListener('click',function(e){
+    var p=$('pop');if(p.hidden||e.target.closest('#pop'))return;
+    closePop();
+    if(!e.target.closest('.blk,.bandlbl,.evc')){e.stopPropagation();e.preventDefault();}
+  },true);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closePop();});
+
+  // ===== overview popup (same cards) =====
+  function lbHead(day,sub){$('lbT').textContent=fd(day,{weekday:'long',month:'short',day:'numeric'});$('lbM').textContent=sub||'';$('lbC').innerHTML='';}
   function openNt(a,add){
     if(a!==undefined){ntDay=a;ntAdd=!!add;ntOpen=null;}
-    var L=ntItems(ntDay,shiftDay(ntDay,1)).sort(byOrd),f={month:'short',day:'numeric'};
-    $('lbT').textContent=fd(ntDay,{weekday:'long',month:'short',day:'numeric'});$('lbM').textContent='';
+    var L=ntItems(ntDay,shiftDay(ntDay,1)).sort(byOrd);
+    lbHead(ntDay,'No time');$('lbB').classList.remove('bz');
     $('lbAdd').hidden=!ntAdd;$('lbAdd').textContent=ovMode==='task'?'Add task':'Add event';
     $('lbGo').hidden=sv.per!=='m';
-    $('lbB').innerHTML='<div class="ntl">'+L.map(function(x){
-      var rg=x.e>x.s?fd(x.s,f)+' – '+fd(x.e,f):fd(x.s,f);
-      return '<div class="nbr"><div class="nbk '+(x.k==='e'?'ev':'tk')+'" style="--c:'+x.col+'"><b>'+esc(x.name)+'</b><small>'+rg+'</small>'+
-        (x.note?'<div class="nn">'+esc(x.note)+'</div>':'')+'</div>'+
-        '<button class="nte" data-e="'+x.id+'" data-k="'+x.k+'">Edit '+(x.k==='e'?'event':'task')+'</button></div>';
-    }).join('')+'</div>';
+    $('lbB').innerHTML='<div class="ntl">'+L.map(function(x){return cardFor(x.k,x.id,{});}).join('')+'</div>';
     if(!$('lbd').open)$('lbd').showModal();
   }
-  // week view zoom: every task touching a 3-hour band, plus timed events behind them; tap a block to edit it
+  function openCards(day,sub,pairs){
+    lbHead(day,sub);$('lbB').classList.remove('bz');
+    $('lbAdd').hidden=true;$('lbGo').hidden=true;
+    $('lbB').innerHTML='<div class="ntl">'+pairs.map(function(p){return cardFor(p[0],p[1],{});}).join('')+'</div>';
+    if(!$('lbd').open)$('lbd').showModal();
+  }
+  function showLbC(k,id,el){
+    $('lbC').innerHTML=cardFor(k,id,{});
+    [].forEach.call($('lbB').querySelectorAll('.sel'),function(n){n.classList.remove('sel');});
+    if(el)el.classList.add('sel');
+  }
+  // week view zoom: tasks touching a 3-hour band with timed events behind them; tap a block to see its card below
   function openBand(a,band){
     var r0=a+band*3*36e5,r1=r0+3*36e5,its=state.plans.filter(function(x){return x.end>r0&&x.start<r1&&x.end>x.start&&!x.nt;}).sort(function(x,y){return x.start-y.start;});
     if(!its.length)return;
@@ -1468,11 +1563,10 @@ dialog .acts{padding-top:0}
     ts.forEach(function(t){if(keep.every(function(k){return Math.abs(k-t)*PX>=15;}))keep.push(t);});
     keep.forEach(function(t){rows+='<span style="top:'+((t-s0)*PX).toFixed(1)+'px">'+hm(t)+'</span>';});
     var evh=state.blocks.filter(function(x){return x.end>s0&&x.start<e0&&x.end>x.start;}).map(function(x){
-      var l=state.labels.filter(function(q){return q.name.toLowerCase()===String(x.task).toLowerCase();})[0],c=l?PAL[(l.c||0)%8][0]:'#b8ab9c';
       var vs=Math.max(x.start,s0),ve=Math.min(x.end,e0);
-      return '<i class="eb" data-eb="'+x.id+'" style="--c:'+c+';top:'+((vs-s0)*PX).toFixed(1)+'px;height:'+Math.max((ve-vs)*PX,24).toFixed(1)+'px"><b>'+esc(x.task)+'</b><small>'+hm(x.start)+' – '+hm(x.end)+'</small></i>';
+      return '<i class="eb" data-eb="'+x.id+'" style="--c:'+bcol(x)+';top:'+((vs-s0)*PX).toFixed(1)+'px;height:'+Math.max((ve-vs)*PX,24).toFixed(1)+'px"><b>'+esc(x.task)+'</b><small>'+hm(x.start)+' – '+hm(x.end)+'</small></i>';
     }).join('');
-    $('lbT').textContent=fd(a,{weekday:'short',month:'short',day:'numeric'})+' · '+(band*3)+'–'+(band*3+3);$('lbM').textContent='';
+    lbHead(a,hm(s0)+' – '+hm(e0));$('lbB').classList.add('bz');
     $('lbAdd').hidden=true;$('lbGo').hidden=true;
     $('lbB').innerHTML='<div class="lbax" style="height:'+H2+'px">'+rows+'</div><div class="lbl" style="height:'+H2+'px">'+evh+bl.map(function(it){
       var top=(it.vs-s0)*PX,hh=Math.max((it.ve-it.vs)*PX,RH*.9),w=100/it.n,nt=it.x.note||'';
@@ -1483,7 +1577,12 @@ dialog .acts{padding-top:0}
   var ovScroll=false,yM=null,ntDay=0,ntAdd=false,ntOpen=null;
   function ord(x){return parseInt(String(x.id).slice(0,8),36)||0;}
   function byOrd(x,y){return ord(x)-ord(y);}
-  function edit(k,id){if(k==='e')openLev(id);else openDlg('plan',id,'task');}
+  function edit(k,id){
+    if(k==='e')openLev(id);
+    else if(k==='b'){var bk=byId(state.blocks,id);if(bk)openDlg(bk.side||'plan',id,'block');}
+    else if(k==='r')openDlg('rec',id,'task');
+    else openDlg('plan',id,'task');
+  }
   var wbl={},ovMode='event',pvDay=null,R20=20*6e4;
   function wevents(a,b,LH){
     var pm=LH/1440;
@@ -1538,10 +1637,9 @@ dialog .acts{padding-top:0}
   $('lbGo').addEventListener('click',function(){var d=ntDay;$('lbd').close();ovd.close();viewDay=d;render();setTimeout(goNow,60);});
   $('lbAdd').addEventListener('click',function(){var d=ntDay;$('lbd').close();ovAdd(d);});
   $('lbd').addEventListener('click',function(e){
-    var ed=e.target.closest('[data-e]');if(ed){$('lbd').close();edit(ed.dataset.k,ed.dataset.e);return;}
-    var x=e.target.closest('[data-p]');if(x){ntOpen=ntOpen===x.dataset.p?null:x.dataset.p;openNt();return;}
-    var b=e.target.closest('[data-b]');if(b){$('lbd').close();openDlg('plan',b.dataset.b,'task');return;}
-    var eb=e.target.closest('[data-eb]');if(eb){var bk2=byId(state.blocks,eb.dataset.eb);$('lbd').close();if(bk2)openDlg(bk2.side||'plan',bk2.id,'block');return;}
+    var ed=e.target.closest('[data-ed]');if(ed){var k=ed.dataset.ed,id=ed.dataset.id;$('lbd').close();edit(k,id);return;}
+    var b=e.target.closest('[data-b]');if(b){showLbC('p',b.dataset.b,b);return;}
+    var eb=e.target.closest('[data-eb]');if(eb){showLbC('b',eb.dataset.eb,eb);return;}
     var r=$('lbd').getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('lbd').close();
   });
@@ -1619,12 +1717,12 @@ dialog .acts{padding-top:0}
     else if(a==='amode'){ovMode=ovMode==='task'?'event':'task';}
     else if(a==='add'){ovAdd(+v);return;}
     else if(a==='lane'){if(e.target!==el)return;var rc=el.getBoundingClientRect();ovAdd(+v,Math.min(1410,Math.floor((e.clientY-rc.top)/rc.height*48)*30));return;}
-    else if(a==='evb'){var bk=byId(state.blocks,v);if(bk)openDlg(bk.side||'plan',v,'block');return;}
+    else if(a==='evb'){var bk=byId(state.blocks,v);if(bk)openCards(dayStart(bk.start),'Event',[['b',bk.id]]);return;}
     else if(a==='nt'){openNt(+v);return;}
     else if(a==='blk'){var ln=el.parentNode,rc=ln.getBoundingClientRect();openBand(+ln.dataset.v,Math.min(7,Math.max(0,Math.floor((e.clientY-rc.top)/rc.height*8))));return;}
     else if(a==='day2'){var t0=+v;if(ntItems(t0,shiftDay(t0,1)).length)openNt(t0,true);else ovAdd(t0);return;}
     else if(a==='ym'){yM=+v===-1?null:+v;}
-    else if(a==='edit'){edit(el.dataset.k,v);return;}
+    else if(a==='edit'){var itx=byId(el.dataset.k==='e'?state.events:state.plans,v);if(itx)openCards(dayStart(itx.start),'',[[el.dataset.k,v]]);return;}
     else if(a==='day'){viewDay=+v;ovd.close();render();setTimeout(goNow,60);return;}
     else if(a==='ev'){openEv(v);return;}
     else if(a==='addev'){(sv.per==='w'?(viewDay=dayStart(Date.now()),ovd.close(),render(),openDlg('plan',null,'task',new Date().getHours()*60),fromOv=true):openEv(null,Date.now()));return;}
