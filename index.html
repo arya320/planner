@@ -573,7 +573,7 @@ dialog .acts{padding-top:0}
 /* v7: zoom = column + axis wide; the task card opens beside it, like the home page */
 #lbd.zoom{overflow:visible;transition:transform .28s ease}
 #lbd.zoom.sel{transform:translateX(calc(var(--sx,0px) * -1))}
-.lbt.zm{max-height:calc(var(--vvh,100vh) - 130px);overflow:auto;padding:0;gap:6px}
+.lbt.zm{max-height:calc(var(--vvh,100vh) - 130px);overflow:auto;padding:8px 0;gap:6px}
 .lbt.zm .lbax{width:34px}
 #lbZ{position:absolute;top:0;left:calc(100% + 4px);opacity:0;pointer-events:none;transition:opacity .22s ease;max-height:calc(var(--vvh,100vh) - 16px);overflow:auto}
 #lbd:not(.zoom) #lbZ{display:none}
@@ -588,6 +588,7 @@ dialog .acts{padding-top:0}
 .lbl i{font-size:.85rem;padding:3px 10px;border-radius:10px}
 .lbl i small{font-size:.74rem}
 .lbl i.eb{padding-left:13px}
+.lbl i small.nn{white-space:pre-wrap;overflow-wrap:anywhere}
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
 #authCard{width:min(390px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0001}
@@ -1618,9 +1619,20 @@ dialog .acts{padding-top:0}
     if(!its.length&&!evs.length)return;
     var s0=r0,e0=r1,rows='';
     its.forEach(function(x){s0=Math.min(s0,x.start);e0=Math.max(e0,x.end);});
-    var PX=34/R20,H2=Math.round((e0-s0)*PX);
     var bl=its.map(function(x){return {x:x,vs:x.start,ve:x.end};});
     layout(bl);
+    var Sw=$('tl').offsetWidth||Math.min(692,innerWidth-28),col=(Sw-56)/2,dW=Math.min(Math.round(col+56),Math.round(innerWidth*.96)),lw=dW-74;
+    function units(t){var n=0;for(var i=0;i<t.length;i++)n+=t.charCodeAt(i)>255?2:1;return n;}
+    function needH(it){
+      var cpl=Math.max(6,Math.floor((lw/it.n-20)/6.4)),nl=0,nt=it.x.note||'';
+      if(nt)nt.split('\n').forEach(function(l){nl+=Math.max(1,Math.ceil(units(l)/cpl));});
+      return 12+17+15+(nt?nl*15+2:0);
+    }
+    var mins=(e0-s0)/6e4,vvh=window.visualViewport?visualViewport.height:innerHeight,avail=Math.max(220,vvh*.9-130);
+    var pm=Math.max(1.7,Math.min(avail/mins,4));
+    bl.forEach(function(it){pm=Math.max(pm,needH(it)/Math.max(1,(it.ve-it.vs)/6e4));});
+    evs.forEach(function(x){var vs=Math.max(x.start,s0),ve=Math.min(x.end,e0);if(ve>vs)pm=Math.max(pm,34/((ve-vs)/6e4));});
+    var PX=pm/6e4,H2=Math.round((e0-s0)*PX);
     var ts=[s0,e0],keep=[s0,e0];
     its.forEach(function(x){ts.push(x.start,x.end);});
     ts.sort(function(p,q){return p-q;});
@@ -1633,14 +1645,14 @@ dialog .acts{padding-top:0}
     }).join('');
     lbHead(a,'');
     $('lbT').innerHTML=esc(fd(a,{weekday:'long',month:'short',day:'numeric'}))+'<span class="lbr">'+(band*3)+'–'+(band*3+3)+'</span>';
-    var Sw=$('tl').offsetWidth||Math.min(692,innerWidth-28),col=(Sw-56)/2,d=$('lbd');
-    d.classList.add('zoom');d.style.width=Math.min(Math.round(col+56),Math.round(innerWidth*.96))+'px';
+    var d=$('lbd');
+    d.classList.add('zoom');d.style.width=dW+'px';
     d.style.setProperty('--sx',Math.round(col/2)+'px');d.dataset.col=col;
     $('lbB').className='lbt zm';
     $('lbAdd').hidden=true;$('lbGo').hidden=true;
     $('lbB').innerHTML='<div class="lbax" style="height:'+H2+'px">'+rows+'</div><div class="lbl" style="height:'+H2+'px">'+evh+bl.map(function(it){
       var top=(it.vs-s0)*PX,hh=Math.max((it.ve-it.vs)*PX,16),w=100/it.n,nt=it.x.note||'';
-      return '<i class="tk" data-b="'+it.x.id+'" style="--c:'+tcolor(it.x)+';top:'+top.toFixed(1)+'px;height:'+hh.toFixed(1)+'px;left:calc('+(it.lane*w)+'% + 1px);width:calc('+w+'% - 2px);background:color-mix(in srgb,'+tcolor(it.x)+' 32%,var(--card))"><b>'+esc(tname(it.x))+'</b>'+(hh>=34?'<small>'+hm(it.x.start)+' – '+hm(it.x.end)+'</small>':'')+(nt&&hh>=64?'<small>'+esc(nt)+'</small>':'')+'</i>';
+      return '<i class="tk" data-b="'+it.x.id+'" style="--c:'+tcolor(it.x)+';top:'+top.toFixed(1)+'px;height:'+hh.toFixed(1)+'px;left:calc('+(it.lane*w)+'% + 1px);width:calc('+w+'% - 2px);background:color-mix(in srgb,'+tcolor(it.x)+' 32%,var(--card))"><b>'+esc(tname(it.x))+'</b>'+(hh>=34?'<small>'+hm(it.x.start)+' – '+hm(it.x.end)+'</small>':'')+(nt&&hh>=48?'<small class="nn">'+esc(nt)+'</small>':'')+'</i>';
     }).join('')+'</div>';
     $('lbd').showModal();
   }
