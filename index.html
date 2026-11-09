@@ -667,6 +667,40 @@ dialog .acts{padding-top:0}
 .mlist{margin-top:14px}
 .mli .dc{margin-bottom:8px}
 .ym2{min-height:0;padding:8px}
+/* v12: no tap / shadow effects, actions bottom-right, floating panels, one overview header */
+*{-webkit-tap-highlight-color:transparent}
+.blk,.band,.lbl i,.mc,.wl i{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.blk:hover{filter:none}
+.blk.x,.lbl i.tk.x{box-shadow:none}
+.lbl i.eb.x{box-shadow:inset 3px 0 0 var(--c)}
+#pop .dc{box-shadow:none}
+#pop .dc.ev{box-shadow:inset 3px 0 0 var(--c)}
+.dc-t{display:block;font-size:.85rem;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.dc-a{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:6px 0 0}
+.dc>:first-child{margin-top:0}
+.xa{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:4px}
+.xa button{border:none;background:none;padding:0;border-radius:0;font-size:.72rem;line-height:1.5;color:var(--muted)}
+.xa button[data-start]{background:var(--yellow);border:1px solid var(--yellow-deep);color:#3b3417;font-weight:600;border-radius:999px;padding:0 9px}
+.xn{margin-top:0}
+.blk.x small,.lbl i.x small,.band.x small{white-space:normal}
+.blk.x b,.lbl i.x b,.band.x b{display:block;white-space:normal;overflow:visible;overflow-wrap:anywhere}
+.band.x b{font-size:.85rem;font-weight:600;line-height:1.3}
+.band.x small{font-size:.74rem;opacity:.8}
+#panelPlan,#panelRec{position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:14px;right:14px;margin:0 auto;max-width:692px;z-index:8;box-shadow:none;padding-top:30px}
+@media (min-width:900px){#panelPlan,#panelRec{max-width:972px}}
+.pclose{position:absolute;top:6px;right:8px;border:none;background:none;color:var(--muted);font-size:1rem;padding:2px 6px;z-index:2}
+.pnote{display:block}
+#ovBody .mh{margin-bottom:8px}
+#ovBody .mo,#ovBody.ovw .mo{margin:0 0 8px}
+#ovBody .trow{margin-top:8px;min-height:24px}
+#ovBody .tot,#ovBody.ovw .tot{padding:0 2px;white-space:nowrap}
+.ovtop{padding-bottom:6px}
+.wh{height:24px}
+.wn{height:20px}
+.wax{margin-top:44px}
+/* v12b: panel replaces only the date row; Plan / Record tabs stay visible */
+#panelPlan,#panelRec{position:static;left:auto;right:auto;top:auto;margin:0;max-width:none;z-index:auto;padding-top:10px}
+.pclose{display:none}
 /* Cloud account gate */
 #authGate{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
 #authCard{width:min(390px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 40px #0001}
@@ -703,11 +737,13 @@ dialog .acts{padding-top:0}
     </div>
 
     <section class="panel" id="panelPlan" hidden aria-label="Notes for the day">
+      <button class="pclose" type="button" data-pclose aria-label="Close">✕</button>
       <div class="ptitle"><b id="pDay"></b></div>
       <textarea id="dayNote" placeholder="Note"></textarea>
     </section>
 
     <section class="panel" id="panelRec" hidden aria-label="Record">
+      <button class="pclose" type="button" data-pclose aria-label="Close">✕</button>
       <div class="prow">
         <div class="cb"><input type="text" id="task2" maxlength="60" autocomplete="off" placeholder="Task" aria-label="Task"><div class="cbl" id="list2" hidden></div></div>
         <span class="clock sm" id="clock2" hidden>00:00:00</span>
@@ -938,10 +974,8 @@ dialog .acts{padding-top:0}
   var expKey=null,expDay=null;
   function tgl(key){expKey=expKey===key?null:key;expDay=viewDay;render();}
   function xInner(name,meta,note,k,id,start){
-    return '<div class="xh"><b>'+esc(name)+'</b><span class="dc-a">'+
-      (k?'<button type="button" data-ed="'+k+'" data-id="'+id+'">Edit '+(k==='e'||k==='b'?'event':'task')+'</button>':'')+
-      (start?'<button type="button" data-start="'+id+'">Start</button>':'')+'</span></div>'+
-      (meta?'<small class="xm">'+esc(meta)+'</small>':'')+(note?'<div class="xn">'+esc(note)+'</div>':'');
+    var acts=(k?'<button type="button" data-ed="'+k+'" data-id="'+id+'">Edit '+(k==='e'||k==='b'?'event':'task')+'</button>':'')+(start?'<button type="button" data-start="'+id+'">Start</button>':'');
+    return '<b>'+esc(name)+'</b>'+(meta?'<small class="xm">'+esc(meta)+'</small>':'')+(note?'<div class="xn">'+esc(note)+'</div>':'')+(acts?'<div class="xa">'+acts+'</div>':'');
   }
   function draw(colId,items,kind){
     var px=H/36e5,isFull=!!full,today=viewDay===dayStart(Date.now());
@@ -1050,7 +1084,9 @@ dialog .acts{padding-top:0}
   }
   function setPanel(name){
     closePop();
+    var t0=$('tl').getBoundingClientRect().top;
     openPanel=openPanel===name?null:name;
+    $('head').hidden=!!openPanel;
     $('panelPlan').hidden=openPanel!=='plan';
     $('panelRec').hidden=openPanel!=='rec';
     ['Plan','Rec'].forEach(function(k){
@@ -1058,7 +1094,11 @@ dialog .acts{padding-top:0}
       $('tab'+k).classList.toggle('on',on); $('tab'+k).setAttribute('aria-expanded',on);
     });
     if(openPanel==='plan')$('dayNote').value=state.days[dayKey(viewDay)]||'';
+    panelShift(t0);
   }
+  // the panel sits in the sticky header (above the Plan / Record tabs); if the page is scrolled, keep the timeline where it was
+  function panelShift(t0){var t1=$('tl').getBoundingClientRect().top;if(window.scrollY>0&&t1!==t0)window.scrollBy(0,t1-t0);}
+  document.addEventListener('click',function(e){if(e.target.closest('[data-pclose]')&&openPanel)setPanel(openPanel);});
   var full=null;
   function tabClick(e,n){var r=e.currentTarget.getBoundingClientRect();if((n==='plan')===(e.clientX-r.left>r.width/2))setPanel(n);else setFull(n);}
   $('tabPlan').addEventListener('click',function(e){tabClick(e,'plan');});
@@ -1645,14 +1685,11 @@ dialog .acts{padding-top:0}
   // ===== the one detail-card template (home, week, month, year all use it) =====
   function bcol(b){var l=state.labels.filter(function(q){return q.name.toLowerCase()===String(b.task).toLowerCase();})[0];return l?PAL[(l.c||0)%8][0]:'#b8ab9c';}
   function card(o){
-    if(o.bare)return '<div class="dc '+o.st+'" style="--c:'+o.col+'"><div class="dc-h"><span class="dc-m">'+esc(o.meta||'')+'</span><span class="dc-a">'+
-      (o.k?'<button type="button" data-ed="'+o.k+'" data-id="'+o.id+'">Edit '+(o.k==='e'||o.k==='b'?'event':'task')+'</button>':'')+
-      (o.start?'<button type="button" data-start="'+o.id+'">Start</button>':'')+
-      '</span></div>'+(o.note?'<div class="dc-n">'+esc(o.note)+'</div>':'')+'</div>';
-    return '<div class="dc '+o.st+'" style="--c:'+o.col+'"><div class="dc-h"><b>'+esc(o.name)+'</b><span class="dc-a">'+
-      (o.k?'<button type="button" data-ed="'+o.k+'" data-id="'+o.id+'">Edit '+(o.k==='e'||o.k==='b'?'event':'task')+'</button>':'')+
-      (o.start?'<button type="button" data-start="'+o.id+'">Start</button>':'')+
-      '</span></div>'+(o.meta?'<div class="dc-m">'+esc(o.meta)+'</div>':'')+(o.note?'<div class="dc-n">'+esc(o.note)+'</div>':'')+'</div>';
+    var acts=(o.k?'<button type="button" data-ed="'+o.k+'" data-id="'+o.id+'">Edit '+(o.k==='e'||o.k==='b'?'event':'task')+'</button>':'')+
+      (o.start?'<button type="button" data-start="'+o.id+'">Start</button>':'');
+    var a=acts?'<div class="dc-a">'+acts+'</div>':'';
+    return '<div class="dc '+o.st+'" style="--c:'+o.col+'">'+(o.bare?'':'<b class="dc-t">'+esc(o.name)+'</b>')+
+      (o.meta?'<div class="dc-m">'+esc(o.meta)+'</div>':'')+(o.note?'<div class="dc-n">'+esc(o.note)+'</div>':'')+a+'</div>';
   }
   // k: p = plan task, r = record, b = timed event, e = long event
   function cardFor(k,id,opt){
@@ -1868,14 +1905,14 @@ dialog .acts{padding-top:0}
     var vvh=window.visualViewport?visualViewport.height:innerHeight;
     var h='<div class="ovtop"><div class="mh"><button data-o="close">‹</button><div class="mtabs">'+[['w','Week'],['m','Month'],['y','Year']].map(function(m){return '<button data-o="per" data-v="'+m[0]+'" class="'+(sv.per===m[0]?'on':'')+'">'+m[1]+'</button>';}).join('')+'</div></div>'+
       '<div class="selw"><div class="mo"><button data-o="step" data-v="-1">‹</button><button data-o="tog">'+plabel()+'</button><button data-o="step" data-v="1">›</button></div>'+(sv.open==='at'?'<div class="lst">'+atList()+'</div>':'')+'</div>'+
-      '<textarea id="pnote" class="pnote" rows="'+(sv.per==='w'?2:3)+'" placeholder="Note" aria-label="Note">'+esc(state.pn[k]||'')+'</textarea>'+
+      '<textarea id="pnote" class="pnote" rows="2" placeholder="Note" aria-label="Note">'+esc(state.pn[k]||'')+'</textarea>'+
       '<div class="trow">'+(sv.per==='w'?'<button class="tot" data-o="stats"><span>Planned '+dur(P)+'</span><span>Recorded '+dur(R)+'</span></button>':'')+'<button class="tot r" data-o="amode">'+(ovMode==='task'?'Task':'Event')+'</button></div></div>';
     var LH=0;
     if(sv.per==='w'){
       LH=lhOv||Math.max(220,vvh-250);var ax='';
       for(i=0;i<=24;i+=3)ax+='<span style="top:'+(i/24*100)+'%">'+i+'</span>';
       wbl={};
-      h+='<div class="wv" style="height:'+(LH+52)+'px;min-height:0"><div class="wax" style="height:'+LH+'px">'+ax+'</div><div class="wsc">';
+      h+='<div class="wv" style="height:'+(LH+44)+'px;min-height:0"><div class="wax" style="height:'+LH+'px">'+ax+'</div><div class="wsc">';
       var tiles='';for(i=0;i<8;i++)tiles+='<b class="gb" style="top:calc('+(i*12.5)+'% + 1.5px);height:calc(12.5% - 3px)"></b>';
       for(i=0;i<7;i++){
         var a=shiftDay(rg[0],i),b=shiftDay(a,1);
